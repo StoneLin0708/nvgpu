@@ -14,6 +14,7 @@ from nvgpu.nvml import nvml_context
 def device_status(device_index):
     handle = nv.nvmlDeviceGetHandleByIndex(device_index)
     device_name = nv.nvmlDeviceGetName(handle)
+    mem_info = nv.nvmlDeviceGetMemoryInfo(handle)
     if six.PY3:
         device_name = device_name.decode('UTF-8')
     nv_procs = nv.nvmlDeviceGetComputeRunningProcesses(handle)
@@ -47,6 +48,8 @@ def device_status(device_index):
         'running_since': arrow.get(min(dates)).humanize() if len(dates) > 0 else None,
         'utilization': utilization,
         'clock_mhz': clock_mhz,
+        'mem_total': mem_info.total,
+        'mem_used': mem_info.used,
         'temperature': temperature,
         'cmd': cmd,
         }
@@ -68,7 +71,7 @@ def device_statuses():
 
 def device_table(rows):
     df = pd.DataFrame(rows, columns=[
-        'is_available', 'type', 'utilization', 'clock_mhz', 'temperature', 'users', 'running_since', 'pids', 'cmd'
+        'is_available', 'type', 'utilization', 'clock_mhz', 'mem_used', 'mem_total', 'temperature', 'users', 'running_since', 'pids', 'cmd'
     ])
     return df
 
@@ -89,15 +92,21 @@ def format_table(df):
             return 'red'
         else:
             raise ValueError(status)
+    def make_mem_status(row):
+        u = row['mem_used']/1024/1024
+        t = row['mem_total']/1024/1024
+        return '{:5.0f}/{:5.0f} [{:3.0f}%]'.format(u, t, u / t)
+
     df['status'] = df.apply(make_status, axis=1)
     df['color'] = df['status'].apply(color_by_status)
     df['util.'] = df['utilization'].apply(lambda u: '%03s %%' % u)
     df['MHz'] = df['clock_mhz']
+    df['Memory'] = df.apply(make_mem_status, axis=1)
     df['temp.'] = df['temperature']
     df['since'] = df['running_since']
     for col in ['since', 'cmd']:
         df[col] = df[col].apply(lambda v: v if v is not None else '')
-    cols = ['status', 'type', 'util.', 'temp.', 'MHz', 'users', 'since', 'pids', 'cmd']
+    cols = ['status', 'type', 'util.', 'temp.', 'MHz', 'Memory', 'users', 'since', 'pids', 'cmd']
     for col in cols:
         df[col] = [colored(row[col], row['color']) for i, row in df.iterrows()]
     df = df[[col for col in cols if col not in ['color']]]
