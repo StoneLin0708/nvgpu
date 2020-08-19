@@ -29,7 +29,8 @@ app.config.from_envvar('NVGPU_CLUSTER_CFG', silent=True)
 
 # agent is either a URL to another machine or 'self' for direct access
 # if no agents specified it will only report its own status
-agents = app.config.get('AGENTS', ['self'])
+from socket import gethostname
+agents = app.config.get('AGENTS', [{'host':'self', 'name':gethostname()}])
 
 
 class GpuStatus(Resource):
