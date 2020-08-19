@@ -95,7 +95,7 @@ def format_table(df):
     def make_mem_status(row):
         u = row['mem_used']/1024/1024
         t = row['mem_total']/1024/1024
-        return '{:5.0f}/{:5.0f} [{:3.0f}%]'.format(u, t, u / t)
+        return '{:5.0f}/{:5.0f} [{:3.0f}%]'.format(u, t, u * 100 / t)
 
     df['status'] = df.apply(make_status, axis=1)
     df['color'] = df['status'].apply(color_by_status)
